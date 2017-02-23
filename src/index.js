@@ -1,4 +1,3 @@
-
 // 找到 value 最小的节点
 function findMin(nodes) {
   if (!nodes.length) {
@@ -84,8 +83,10 @@ function getTreeMap(treeNode, path = '0') {
 
 // 根据长度 len 切割字符串
 function splitByLength(str, len) {
-  if (str.length >= len) {
+  if (str.length > len) {
     return [str.slice(0, len), ...splitByLength(str.slice(len), len)];
+  } else if (!str) {
+    return [];
   }
 
   return [str];
@@ -151,7 +152,6 @@ function encode(codes, treeMap) {
 
     splittedCodes[splittedCodes.length - 1] = lastCode + repeat(restLength, '0').join('');
   }
-  log(splittedCodes);
 
   const codeRes = splittedCodes.map(code => {
     return getEncode(code);
@@ -175,8 +175,6 @@ function decodeHelper(allCode, valueMap, val = '') {
       return decodeHelper(allCode.slice(currLen), valueMap, val + valueMap[currVal]);
     }
   }
-
-  log('de', allCode);
 }
 
 function decode(_cipher, treeMap) {
@@ -203,7 +201,6 @@ function decode(_cipher, treeMap) {
         [code]: key,
       };
     }, {});
-  log('all', splittedCodes, valueMap);
 
   return decodeHelper(allCode, valueMap);
 }
@@ -218,24 +215,31 @@ function compressKey(nodeMap) {
 }
 
 // 压缩
-export default function compress(str) {
+export default function compress(originStr, len = 1) {
+  const str = splitByLength(originStr, len).map(el => {
+    return el.split('').reduce((res, ch) => {
+      return res * 128 + ch.charCodeAt(0);
+    }, 0);
+  }).map(num => String.fromCharCode(num)).join('');
+
   const codes = str.split('');
   const nodeMap = getNodeMap(codes);
   const nodes = Object.keys(nodeMap).map(key => nodeMap[key]);
   const tree = getHuffmanTree(nodes);
   const treeMap = getTreeMap(tree);
 
-  const result = encode(codes, treeMap);
-  const key = compressKey(nodeMap);
+  const cipher = encode(codes, treeMap);
+  const keys = compressKey(nodeMap);
 
-  return result + '!' + key;
+  return {
+    cipher,
+    keys,
+  };
 }
 
 // 解压缩
-export function deCompress(str) {
-  const [cipher, ...keys] = str.split('!');
-
-  const nodeMap = keys.reduce((res, key) => {
+export function deCompress({ cipher, keys }, len = 1) {
+  const nodeMap = keys.split('!').reduce((res, key) => {
     const [code, value] = key.split('~');
 
     return {
@@ -250,5 +254,25 @@ export function deCompress(str) {
   const tree = getHuffmanTree(nodes);
   const treeMap = getTreeMap(tree);
 
-  return decode(cipher, treeMap);
+  const result = decode(cipher, treeMap);
+  return result.split('').map(ch => {
+    const code = ch.charCodeAt(0);
+    const finalCode = do {
+      let codeStr = code.toString(2);
+      
+      if (codeStr.length % 7 !== 0) {
+        codeStr = repeat(7 - codeStr.length % 7, '0').join('') + codeStr;
+      }
+      
+      codeStr;
+    }
+
+    const codes = splitByLength(finalCode, 7).map(c => {
+      return parseInt(c, 2);
+    });
+
+    return codes.map(c => {
+      return String.fromCharCode(c);
+    }).join('');
+  }).join('');
 }

@@ -17,8 +17,10 @@ $ npm i -S huffman.js
 ```js
 import compress, { deCompress } from 'huffman.js';
 
-// result are printable string
-const result = compress(cipher);
+const result = compress(cipher, 2);
+
+// cipher is printable
+console.log(result.cipher, result.keys);
 
 const cipher = deCompress(result);
 ```
